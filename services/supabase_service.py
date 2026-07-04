@@ -1,5 +1,5 @@
 from supabase import create_client, Client
-from backend.config import get_settings
+from config import get_settings
 
 def get_supabase_client() -> Client:
     settings = get_settings()
