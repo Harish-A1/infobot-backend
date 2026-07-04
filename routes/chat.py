@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException
-from backend.models.schemas import ChatRequest, ChatResponse, MessageModel, SessionPreview
-from backend.services.ai_service import get_ai_reply
-from backend.services.supabase_service import save_message, get_session_history, get_all_sessions, delete_session
+from models.schemas import ChatRequest, ChatResponse, MessageModel, SessionPreview
+from services.ai_service import get_ai_reply
+from services.supabase_service import save_message, get_session_history, get_all_sessions, delete_session
 from typing import List
 
 router = APIRouter()

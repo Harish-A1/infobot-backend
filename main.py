@@ -1,12 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-import os
-import sys
-
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
-from backend.routes.chat import router as chat_router
-
+from routes.chat import router as chat_router
 app = FastAPI(title="AI Chatbot Backend", version="1.0.0")
 
 # Enable CORS for Flutter app testing (all origins allowed during dev)
