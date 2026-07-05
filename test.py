@@ -5,6 +5,7 @@ import uuid
 import sys
 
 BASE_URL = "http://localhost:8000"
+BASE_URL = "https://infobot-backend-k83x.onrender.com"
 SESSION_ID = str(uuid.uuid4())
 
 def print_success(msg):
