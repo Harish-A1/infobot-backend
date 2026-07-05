@@ -13,7 +13,7 @@ async def chat_endpoint(request: ChatRequest):
         save_message(request.session_id, "user", request.message)
         
         # Get AI Reply
-        ai_reply = await get_ai_reply(request.message)
+        ai_reply = await get_ai_reply(request.session_id)
         
         # Save AI reply
         save_message(request.session_id, "assistant", ai_reply)

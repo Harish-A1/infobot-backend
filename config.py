@@ -8,6 +8,7 @@ ENV_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env")
 class Settings(BaseSettings):
     supabase_url: str = ""
     supabase_key: str = ""
+    groq_api_key: str = ""
 
     model_config = SettingsConfigDict(env_file=ENV_FILE, env_file_encoding="utf-8")
 
