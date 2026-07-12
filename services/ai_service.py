@@ -1,35 +1,57 @@
+import asyncio
+import logging
 from groq import AsyncGroq
 from config import get_settings
 from services.supabase_service import get_session_history
+from services.rag_service import retrieve_async
+from services.gemini_service import get_gemini_reply
+
+logger = logging.getLogger(__name__)
 
 settings = get_settings()
-client = AsyncGroq(api_key=settings.groq_api_key)
+_groq_client = AsyncGroq(api_key=settings.groq_api_key)
 
-MODEL = "llama-3.3-70b-versatile"
+GROQ_MODEL = "llama-3.3-70b-versatile"
 MAX_HISTORY_MESSAGES = 20
 
-SYSTEM_PROMPT = (
-    "You are InfoBot, a helpful and concise AI assistant. "
-    "Use the conversation history to stay consistent with earlier messages."
+_GROQ_SYSTEM = (
+    "You are Scube AI, a helpful and concise AI assistant. "
+    "Use the conversation history to stay consistent with earlier messages. "
+    "When context from documents is provided, prioritize answering from that context."
 )
 
 
 async def get_ai_reply(session_id: str) -> str:
-    """
-    Generates a reply from Groq using the session's stored conversation
-    history. The caller is expected to have already saved the latest user
-    message to the session before calling this.
-    """
-    history = get_session_history(session_id)
+    history = await asyncio.to_thread(get_session_history, session_id)
+    trimmed = history[-MAX_HISTORY_MESSAGES:]
 
-    messages = [{"role": "system", "content": SYSTEM_PROMPT}]
-    messages.extend(
-        {"role": entry["role"], "content": entry["content"]}
-        for entry in history[-MAX_HISTORY_MESSAGES:]
-    )
+    user_messages = [m for m in trimmed if m["role"] == "user"]
+    last_query = user_messages[-1]["content"] if user_messages else ""
 
-    response = await client.chat.completions.create(
-        model=MODEL,
+    context_chunks: list[str] = []
+    if last_query:
+        try:
+            context_chunks = await retrieve_async(last_query, top_k=5)
+        except Exception as e:
+            logger.warning(f"RAG retrieval failed: {e}")
+
+    try:
+        return await get_gemini_reply(trimmed, context_chunks)
+    except Exception as e:
+        logger.warning(f"Gemini failed, falling back to Groq: {e}")
+
+    # Groq fallback
+    messages = [{"role": "system", "content": _GROQ_SYSTEM}]
+    if context_chunks:
+        context_text = "\n\n---\n\n".join(context_chunks)
+        messages.append({
+            "role": "system",
+            "content": f"Relevant context from documents:\n\n{context_text}",
+        })
+    messages.extend({"role": m["role"], "content": m["content"]} for m in trimmed)
+
+    response = await _groq_client.chat.completions.create(
+        model=GROQ_MODEL,
         messages=messages,
     )
     return response.choices[0].message.content

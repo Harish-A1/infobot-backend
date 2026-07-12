@@ -3,9 +3,9 @@ import urllib.error
 import json
 import uuid
 import sys
+import os
 
-BASE_URL = "http://localhost:8000"
-BASE_URL = "https://infobot-backend-k83x.onrender.com"
+BASE_URL = os.environ.get("BACKEND_URL", "http://localhost:8000")
 SESSION_ID = str(uuid.uuid4())
 
 def print_success(msg):
@@ -31,7 +31,10 @@ def make_request(method, endpoint, data=None):
             return status_code, json.loads(response_body) if response_body else {}
     except urllib.error.HTTPError as e:
         error_body = e.read().decode('utf-8')
-        return e.code, {"error": error_body}
+        try:
+            return e.code, json.loads(error_body)
+        except json.JSONDecodeError:
+            return e.code, {"error": error_body}
     except urllib.error.URLError as e:
         print_error(f"Failed to connect to backend at {BASE_URL}. Is uvicorn running?")
         sys.exit(1)

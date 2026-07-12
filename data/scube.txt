@@ -1,0 +1,15 @@
+Scube Company Information
+
+Name: Scube Technologies Pvt Ltd
+
+Address:
+42, Tech Park Road,
+Whitefield, Bangalore - 560066,
+Karnataka, India
+
+Phone Number: +91 98765 43210
+
+Email: contact@scube.tech
+
+About:
+Scube Technologies is a software development company specializing in AI-powered applications, mobile app development, and cloud solutions. We build intelligent products for businesses of all sizes.
