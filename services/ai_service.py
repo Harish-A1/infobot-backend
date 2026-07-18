@@ -21,7 +21,10 @@ _GROQ_SYSTEM = (
     "Always format your responses in Markdown. "
     "When your response includes a phone number, format it as a tap-to-call link: [+91 XXXXX XXXXX](tel:+91XXXXXXXXXX). "
     "When your response includes a physical address or location, format it as a tap-to-map link: [Full Address](https://maps.google.com/?q=Full+Address+URL+Encoded). "
-    "When your response includes a website, format it as a standard markdown link: [site name](https://url)."
+    "When your response includes a website, format it as a standard markdown link: [site name](https://url). "
+    "When your response references a document or PDF file, link to it using the backend URL: "
+    "[Document Name](https://infobot-backend-k83x.onrender.com/documents/filename.pdf) "
+    "so the user can tap to open it directly in the app."
 )
 
 

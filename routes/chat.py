@@ -1,5 +1,7 @@
 import re
+from pathlib import Path
 from fastapi import APIRouter, HTTPException
+from fastapi.responses import FileResponse
 from models.schemas import ChatRequest, ChatResponse, MessageModel, SessionPreview
 from services.ai_service import get_ai_reply
 from services.supabase_service import (
@@ -7,6 +9,8 @@ from services.supabase_service import (
     delete_session, delete_all_sessions,
 )
 from typing import List
+
+DATA_DIR = Path(__file__).parent.parent / "data"
 
 router = APIRouter()
 
@@ -80,3 +84,23 @@ async def trigger_indexing():
         return {"status": "success", **result}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/documents")
+async def list_documents():
+    pdfs = sorted(f.name for f in DATA_DIR.glob("*.pdf") if f.is_file())
+    return {"documents": pdfs}
+
+
+@router.get("/documents/{filename}")
+async def get_document(filename: str):
+    if not filename.endswith(".pdf") or "/" in filename or ".." in filename:
+        raise HTTPException(status_code=400, detail="Invalid filename.")
+    file_path = DATA_DIR / filename
+    if not file_path.exists():
+        raise HTTPException(status_code=404, detail="Document not found.")
+    return FileResponse(
+        path=str(file_path),
+        media_type="application/pdf",
+        filename=filename,
+    )
