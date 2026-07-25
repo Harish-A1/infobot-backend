@@ -10,10 +10,11 @@ SYSTEM_INSTRUCTION = (
     "Always format your responses in Markdown. "
     "When your response includes a phone number, format it as a tap-to-call link: [+91 XXXXX XXXXX](tel:+91XXXXXXXXXX). "
     "When your response includes a physical address or location, format it as a tap-to-map link using the exact text as the label and a Google Maps URL: [Full Address](https://maps.google.com/?q=Full+Address+URL+Encoded). "
+    "If the provided context includes an explicit MAP: link for that location, use that exact link instead of constructing one. "
     "When your response includes a website, format it as a standard markdown link: [site name](https://url). "
-    "When your response references a document or PDF file, link to it using the backend URL: "
-    "[Document Name](https://infobot-backend-k83x.onrender.com/documents/filename.pdf) "
-    "so the user can tap to open it directly in the app."
+    "When your response references a document mentioned in the provided context, link to it using the "
+    "exact 'link:' URL given alongside that source, formatted as [document name](that exact link) so the "
+    "user can tap to open it directly in the app. Never invent or alter a document URL."
 )
 
 _client = None
@@ -27,7 +28,7 @@ def _get_client():
     return _client
 
 
-async def get_gemini_reply(history: list[dict], context_chunks: list[str]) -> str:
+async def get_gemini_reply(history: list[dict], context_chunks: list[dict]) -> str:
     if not get_settings().gemini_api_key:
         raise RuntimeError("GEMINI_API_KEY not configured")
 
@@ -45,7 +46,8 @@ async def get_gemini_reply(history: list[dict], context_chunks: list[str]) -> st
     # Inject RAG context into the final user message
     last_message = history[-1]["content"] if history else ""
     if context_chunks:
-        context_text = "\n\n---\n\n".join(context_chunks)
+        from services.rag_service import format_context
+        context_text = format_context(context_chunks)
         prompt = (
             f"Relevant context from documents:\n\n{context_text}"
             f"\n\n---\n\nUser question: {last_message}"
