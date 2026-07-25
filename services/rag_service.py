@@ -1,6 +1,7 @@
 import asyncio
 import hashlib
 import logging
+import shutil
 from pathlib import Path
 from urllib.parse import quote
 
@@ -9,6 +10,7 @@ logger = logging.getLogger(__name__)
 DATA_DIR = Path(__file__).parent.parent / "data"
 PROCESSED_DIR = DATA_DIR / "processed"
 CHROMA_DIR = Path(__file__).parent.parent / ".chroma"
+VENDORED_MODEL_DIR = Path(__file__).parent.parent / "models" / "all-MiniLM-L6-v2" / "onnx"
 
 CHUNK_SIZE = 400
 CHUNK_OVERLAP = 50
@@ -31,9 +33,27 @@ def _document_link(processed_filename: str) -> str:
 _collection = None
 
 
+def _seed_embedding_model_cache() -> None:
+    """Pre-populate chromadb's ONNX embedding model cache from the vendored copy in
+    models/, so it never has to fetch it from chroma-onnx-models.s3.amazonaws.com
+    at runtime (that download otherwise repeats on every cold start)."""
+    from chromadb.utils.embedding_functions.onnx_mini_lm_l6_v2 import ONNXMiniLM_L6_V2
+
+    target_dir = Path(ONNXMiniLM_L6_V2.DOWNLOAD_PATH) / ONNXMiniLM_L6_V2.EXTRACTED_FOLDER_NAME
+    if not VENDORED_MODEL_DIR.is_dir():
+        return
+    target_dir.mkdir(parents=True, exist_ok=True)
+    for src in VENDORED_MODEL_DIR.iterdir():
+        dest = target_dir / src.name
+        if not dest.exists():
+            shutil.copy2(src, dest)
+    logger.info(f"Seeded embedding model cache from {VENDORED_MODEL_DIR} into {target_dir}")
+
+
 def _get_collection():
     global _collection
     if _collection is None:
+        _seed_embedding_model_cache()
         import chromadb
         from chromadb.utils.embedding_functions import DefaultEmbeddingFunction
         client = chromadb.PersistentClient(path=str(CHROMA_DIR))
