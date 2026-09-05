@@ -102,5 +102,11 @@ async def get_document(filename: str):
     return FileResponse(
         path=str(file_path),
         media_type="application/pdf",
-        filename=filename,
+        # inline, not attachment (the default when `filename=` is set) - the
+        # app navigates the browser tab straight to this URL to show the PDF.
+        # `attachment` makes the browser silently download the file instead
+        # of navigating at all, which looked exactly like a dead link: no
+        # error, no page change, launchUrl even reported success, because a
+        # download isn't a navigation.
+        headers={"Content-Disposition": f'inline; filename="{filename}"'},
     )
