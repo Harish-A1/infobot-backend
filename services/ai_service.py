@@ -11,10 +11,11 @@ logger = logging.getLogger(__name__)
 settings = get_settings()
 _groq_client = AsyncGroq(api_key=settings.groq_api_key)
 
-GROQ_MODEL = "openai/gpt-oss-120b"
+GROQ_MODEL = "openai/gpt-oss-20b"
 GROQ_TEMPERATURE = 0.4
 GROQ_MAX_TOKENS = 1200
 MAX_HISTORY_MESSAGES = 20
+RAG_TOP_K = 3
 
 _GROQ_SYSTEM = (
     "You are Scube AI, a helpful and concise AI assistant. "
@@ -50,7 +51,7 @@ async def get_ai_reply(session_id: str) -> str:
     context_chunks: list[dict] = []
     if last_query:
         try:
-            context_chunks = await retrieve_async(last_query, top_k=5)
+            context_chunks = await retrieve_async(last_query, top_k=RAG_TOP_K)
         except Exception as e:
             logger.warning(f"RAG retrieval failed: {e}")
 
