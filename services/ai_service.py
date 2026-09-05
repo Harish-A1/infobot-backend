@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 settings = get_settings()
 _groq_client = AsyncGroq(api_key=settings.groq_api_key)
 
-GROQ_MODEL = "llama-3.3-70b-versatile"
+GROQ_MODEL = "openai/gpt-oss-120b"
 MAX_HISTORY_MESSAGES = 20
 
 _GROQ_SYSTEM = (
