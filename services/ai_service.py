@@ -15,6 +15,13 @@ GROQ_MODEL = "openai/gpt-oss-20b"
 GROQ_TEMPERATURE = 0.4
 GROQ_MAX_TOKENS = 1200
 MAX_HISTORY_MESSAGES = 20
+# Message *count* alone doesn't bound request size - a handful of long AI
+# replies (detailed answers, previously tables) can still add up to a
+# payload Groq's gateway rejects outright with 413 Payload Too Large once a
+# session runs long enough. That comes back as an unhandled exception -> 500,
+# which is what "can't send messages anymore after a while" actually was.
+# Trim by content size too, on top of the count cap.
+MAX_HISTORY_CHARS = 6000
 # The indexed corpus is only 6 chunks total (3 per document) - retrieve all of
 # it every time rather than relying on similarity ranking to guess which
 # chunks a short/vague follow-up ("how much does it cost?") actually needs.
@@ -49,9 +56,20 @@ _GROQ_SYSTEM = (
 )
 
 
+def _trim_history_by_size(messages: list[dict], max_chars: int) -> list[dict]:
+    """Drop the oldest messages until total content size is under max_chars,
+    always keeping at least the most recent one even if it alone exceeds it."""
+    total = sum(len(m["content"]) for m in messages)
+    start = 0
+    while total > max_chars and start < len(messages) - 1:
+        total -= len(messages[start]["content"])
+        start += 1
+    return messages[start:]
+
+
 async def get_ai_reply(session_id: str) -> str:
     history = await asyncio.to_thread(get_session_history, session_id)
-    trimmed = history[-MAX_HISTORY_MESSAGES:]
+    trimmed = _trim_history_by_size(history[-MAX_HISTORY_MESSAGES:], MAX_HISTORY_CHARS)
 
     user_messages = [m for m in trimmed if m["role"] == "user"]
     last_query = user_messages[-1]["content"] if user_messages else ""
