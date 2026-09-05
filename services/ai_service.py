@@ -1,4 +1,4 @@
-﻿import asyncio
+import asyncio
 import logging
 from groq import AsyncGroq
 from config import get_settings
