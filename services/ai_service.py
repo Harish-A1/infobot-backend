@@ -15,7 +15,15 @@ GROQ_MODEL = "openai/gpt-oss-20b"
 GROQ_TEMPERATURE = 0.4
 GROQ_MAX_TOKENS = 1200
 MAX_HISTORY_MESSAGES = 20
-RAG_TOP_K = 3
+# The indexed corpus is only 6 chunks total (3 per document) - retrieve all of
+# it every time rather than relying on similarity ranking to guess which
+# chunks a short/vague follow-up ("how much does it cost?") actually needs.
+# Tried top_k=3 to reduce token usage; it silently dropped the pricing/RERA
+# chunk on vague queries and made the bot falsely claim the info didn't
+# exist, which is worse than the token savings were worth on a corpus this
+# small. Revisit if the document set grows enough that "everything" stops
+# being cheap.
+RAG_TOP_K = 6
 
 _GROQ_SYSTEM = (
     "You are Scube AI, a helpful and concise AI assistant. "
