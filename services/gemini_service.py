@@ -63,7 +63,7 @@ async def get_gemini_reply(history: list[dict], context_chunks: list[dict]) -> s
     )
 
     response = await client.aio.models.generate_content(
-        model="gemini-2.0-flash",
+        model="gemini-3.6-flash",
         contents=contents,
         config=types.GenerateContentConfig(system_instruction=SYSTEM_INSTRUCTION),
     )

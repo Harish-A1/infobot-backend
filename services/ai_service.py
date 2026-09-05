@@ -4,7 +4,7 @@ from groq import AsyncGroq
 from config import get_settings
 from services.supabase_service import get_session_history
 from services.rag_service import retrieve_async, format_context
-# from services.gemini_service import get_gemini_reply  # disabled: GEMINI_API_KEY currently returns 401. Re-enable import + call below once fixed.
+from services.gemini_service import get_gemini_reply
 
 logger = logging.getLogger(__name__)
 
@@ -81,11 +81,13 @@ async def get_ai_reply(session_id: str) -> str:
         except Exception as e:
             logger.warning(f"RAG retrieval failed: {e}")
 
-    # Gemini disabled: GEMINI_API_KEY currently returns 401. Uncomment to re-enable.
-    # try:
-    #     return await get_gemini_reply(trimmed, context_chunks)
-    # except Exception as e:
-    #     logger.warning(f"Gemini failed, falling back to Groq: {e}")
+    # Gemini primary: ~31x more free-tier headroom than Groq (250k vs 8k tokens/min),
+    # which is what actually matters given we resend the full RAG context on every
+    # message. Falls back to Groq on any failure (bad key, quota, transient 503s).
+    try:
+        return await get_gemini_reply(trimmed, context_chunks)
+    except Exception as e:
+        logger.warning(f"Gemini failed, falling back to Groq: {e}")
 
     # Groq fallback
     messages = [{"role": "system", "content": _GROQ_SYSTEM}]
