@@ -12,6 +12,8 @@ settings = get_settings()
 _groq_client = AsyncGroq(api_key=settings.groq_api_key)
 
 GROQ_MODEL = "openai/gpt-oss-120b"
+GROQ_TEMPERATURE = 0.4
+GROQ_MAX_TOKENS = 1200
 MAX_HISTORY_MESSAGES = 20
 
 _GROQ_SYSTEM = (
@@ -21,6 +23,12 @@ _GROQ_SYSTEM = (
     "State facts directly and confidently. Never add disclaimers, hedging, or suggestions to verify "
     "information elsewhere (e.g. 'this may be subject to change', 'please confirm with the developer') "
     "- the provided context is authoritative, so just answer.\n\n"
+    "Match the length and format of your answer to the question. A simple or narrow question "
+    "(yes/no, a single fact, 'why should I...') gets a short direct answer in a sentence or a few bullet "
+    "points - do not build a table for it. Reserve tables for when the user is comparing multiple "
+    "structured attributes across items (e.g. pricing tiers, unit specifications) and keep each cell to a "
+    "single line. Never use raw HTML tags such as '<br>' anywhere, including inside table cells - "
+    "if a cell needs more than one point, separate them with '; ' instead, or drop the table for a bullet list.\n\n"
     "Always format your responses in Markdown. "
     "When your response includes a phone number, format it as a tap-to-call link: [+91 XXXXX XXXXX](tel:+91XXXXXXXXXX). "
     "When your response includes a physical address or location, format it as a tap-to-map link: [Full Address](https://maps.google.com/?q=Full+Address+URL+Encoded). "
@@ -65,5 +73,7 @@ async def get_ai_reply(session_id: str) -> str:
     response = await _groq_client.chat.completions.create(
         model=GROQ_MODEL,
         messages=messages,
+        temperature=GROQ_TEMPERATURE,
+        max_tokens=GROQ_MAX_TOKENS,
     )
     return response.choices[0].message.content
