@@ -1,6 +1,7 @@
 import asyncio
 import logging
-from groq import AsyncGroq
+from groq import AsyncGroq, RateLimitError as GroqRateLimitError
+from google.genai.errors import APIError as GenaiAPIError
 from config import get_settings
 from services.supabase_service import get_session_history
 from services.rag_service import retrieve_async, format_context
@@ -90,9 +91,11 @@ async def get_ai_reply(session_id: str) -> str:
     # Gemini primary: ~31x more free-tier headroom than Groq (250k vs 8k tokens/min),
     # which is what actually matters given we resend the full RAG context on every
     # message. Falls back to Groq on any failure (bad key, quota, transient 503s).
+    gemini_error: Exception | None = None
     try:
         return await get_gemini_reply(trimmed, context_chunks)
     except Exception as e:
+        gemini_error = e
         logger.warning(f"Gemini failed, falling back to Groq: {e}")
 
     # Groq fallback
@@ -105,10 +108,37 @@ async def get_ai_reply(session_id: str) -> str:
         })
     messages.extend({"role": m["role"], "content": m["content"]} for m in trimmed)
 
-    response = await _groq_client.chat.completions.create(
-        model=GROQ_MODEL,
-        messages=messages,
-        temperature=GROQ_TEMPERATURE,
-        max_tokens=GROQ_MAX_TOKENS,
-    )
-    return response.choices[0].message.content
+    # If Groq also fails - previously this exception went uncaught all the way
+    # up to a generic 500 in chat.py, which the app showed as a raw technical
+    # error ("Failed to send message: DioException...") with the AI bubble
+    # replaced by a hardcoded "Error: Could not retrieve response." Both
+    # providers failing at once should be rare now (Gemini's headroom is
+    # large), but it's not hypothetical - it's exactly what happens if either
+    # is genuinely rate-limited at the same moment. Never let it raise past
+    # here: always return real text, so the user gets an honest, specific
+    # message in the chat instead of a generic error banner.
+    try:
+        response = await _groq_client.chat.completions.create(
+            model=GROQ_MODEL,
+            messages=messages,
+            temperature=GROQ_TEMPERATURE,
+            max_tokens=GROQ_MAX_TOKENS,
+        )
+        return response.choices[0].message.content
+    except Exception as groq_error:
+        logger.error(
+            f"Both providers failed for session {session_id}. "
+            f"Gemini: {gemini_error!r} Groq: {groq_error!r}"
+        )
+        rate_limited = isinstance(groq_error, GroqRateLimitError) or (
+            isinstance(gemini_error, GenaiAPIError) and gemini_error.code == 429
+        )
+        if rate_limited:
+            return (
+                "I'm getting a lot of questions right now and couldn't process "
+                "that one. Please wait a moment and try again."
+            )
+        return (
+            "Sorry, I'm having trouble responding right now. Please try again "
+            "in a moment."
+        )
